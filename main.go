@@ -18,7 +18,7 @@ import (
 func main() {
 	// 1. Load .env
 	if err := godotenv.Load(); err != nil {
-		log.Println("Peringatan: File .env tidak ditemukan")
+		log.Println("Peringatan: File .env tidak ditemukan, menggunakan environment Docker")
 	}
 
 	// 2. Koneksi DB & Migrasi
@@ -35,8 +35,10 @@ func main() {
 	// 5. Middleware Global
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+		AllowOrigins:     "https://mie.outsys.space", // Domain spesifik untuk keamanan
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
+		AllowCredentials: true,
 	}))
 
 	// 6. Setup Routes
@@ -58,20 +60,32 @@ func setupRoutes(app *fiber.App) {
 	// Auth (Public)
 	api.Post("/login", controllers.Login)
 
-	// --- Jalur Kasir ---
+	// ==========================================
+	// --- JALUR KASIR ---
+	// ==========================================
 	// Bisa diakses Kasir & Admin
 	kasir := api.Group("/kasir", common.AuthRequired(""))
+	
+	// Transaksi
 	kasir.Post("/check-in", controllers.ProcessPresensiDanMie)
+	
+	// [FITUR BARU] Endpoint Verifikasi Mitra via RFID atau PIN
+	kasir.Post("/verify-mitra", controllers.VerifyMitra)
 
-	// --- Jalur Admin ---
+	// ==========================================
+	// --- JALUR ADMIN ---
+	// ==========================================
 	// Hanya bisa diakses Admin
 	admin := api.Group("/admin", common.AuthRequired("admin"))
-	
-	// Master Penjual
+
+	// Master Penjual (CRM)
 	admin.Get("/penjual", controllers.GetListPenjual)
 	admin.Post("/penjual", controllers.AddPenjual)
 	
-	// Reports
+	// [FITUR BARU] Endpoint Pairing Kartu RFID ke Mitra
+	admin.Post("/penjual/rfid", controllers.AddRFIDToPenjual)
+
+	// Reports & Analytics
 	admin.Get("/daily-rekap", controllers.GetDailyRekap)
 	admin.Get("/ranking", controllers.GetTopPenjual)
 	admin.Get("/low-activity", controllers.GetInactivePenjual)
@@ -85,7 +99,7 @@ func seedAdmin() {
 	if count == 0 {
 		// Gunakan Bcrypt untuk password production
 		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
-		
+
 		admin := models.User{
 			Username: "admin",
 			Password: string(hashedPassword),
@@ -101,7 +115,7 @@ func seedAdmin() {
 			Role:     "kasir",
 		}
 		config.DB.Create(&kasir)
-		
+
 		log.Println("✅ Seed: Admin (admin123) & Kasir (kasir123) berhasil dibuat")
 	}
 }
