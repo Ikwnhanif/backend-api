@@ -35,7 +35,7 @@ func main() {
 	// 5. Middleware Global
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "https://mie.outsys.space", // Domain spesifik untuk keamanan
+		AllowOrigins:     "http://localhost:3000, https://mie.outsys.space", 
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
 		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
 		AllowCredentials: true,
@@ -81,6 +81,7 @@ func setupRoutes(app *fiber.App) {
 	// Master Penjual (CRM)
 	admin.Get("/penjual", controllers.GetListPenjual)
 	admin.Post("/penjual", controllers.AddPenjual)
+	admin.Put("/penjual/:id", controllers.UpdatePenjual)
 	
 	// [FITUR BARU] Endpoint Pairing Kartu RFID ke Mitra
 	admin.Post("/penjual/rfid", controllers.AddRFIDToPenjual)

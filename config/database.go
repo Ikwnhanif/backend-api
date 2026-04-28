@@ -27,7 +27,11 @@ func ConnectDB() {
 	}
 
 	// Auto Migrate
-	db.AutoMigrate(&models.User{}, &models.Penjual{}, &models.Presensi{}, &models.TransaksiMie{})
+	// Pastikan &models.PenjualRFID{} ada di dalam kurung ini:
+	err = db.AutoMigrate(&models.User{}, &models.Penjual{}, &models.PenjualRFID{}, &models.Presensi{}, &models.TransaksiMie{})
+	if err != nil {
+		log.Fatal("Gagal migrasi database:", err)
+	}
 
 	DB = db
 	fmt.Println("Database terkoneksi & migrasi berhasil!")

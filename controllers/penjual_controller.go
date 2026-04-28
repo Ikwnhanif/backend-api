@@ -116,3 +116,24 @@ func VerifyMitra(c *fiber.Ctx) error {
 		"data":    penjual,
 	})
 }
+
+// UpdatePenjual untuk mengedit data mitra yang sudah ada
+func UpdatePenjual(c *fiber.Ctx) error {
+	id := c.Params("id")
+	var penjual models.Penjual
+
+	// Cari data berdasarkan ID
+	if err := config.DB.First(&penjual, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Data mitra tidak ditemukan"})
+	}
+
+	// Timpa data lama dengan data baru dari form
+	if err := c.BodyParser(&penjual); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Format data salah"})
+	}
+
+	// Simpan perubahan ke database
+	config.DB.Save(&penjual)
+
+	return c.JSON(penjual)
+}
