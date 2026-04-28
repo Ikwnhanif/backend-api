@@ -55,3 +55,65 @@ type TransaksiMie struct {
 	JumlahKg         float64   `gorm:"type:decimal(10,2);not null" json:"jumlah_kg"`
 	TanggalTransaksi time.Time `gorm:"autoCreateTime" json:"tanggal_transaksi"`
 }
+
+// ==========================================
+// MODUL SEWA & ASET MITRA
+// ==========================================
+
+// 1. Master Barang Sewa (Katalog)
+type KatalogSewa struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	NamaAset  string    `gorm:"not null" json:"nama_aset"` // Misal: Gerobak, Dandang, Mangkok
+	HargaHari float64   `gorm:"not null" json:"harga_hari"` // Harga sewa per hari
+	IsActive  bool      `gorm:"default:true" json:"is_active"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (KatalogSewa) TableName() string { return "katalog_sewa" }
+
+// 2. Pencatatan Barang yang Disewa Mitra
+type SewaMitra struct {
+	ID            uint        `gorm:"primaryKey" json:"id"`
+	PenjualID     uint        `json:"penjual_id"`
+	// 👇 UBAH json:"-" MENJADI json:"penjual" 👇
+	Penjual       Penjual     `gorm:"foreignKey:PenjualID" json:"penjual"`
+	KatalogSewaID uint        `json:"katalog_sewa_id"`
+	KatalogSewa   KatalogSewa `gorm:"foreignKey:KatalogSewaID" json:"katalog_sewa"`
+	TanggalMulai  time.Time   `gorm:"type:date;not null" json:"tanggal_mulai"`
+	TanggalKembali *time.Time  `gorm:"type:date" json:"tanggal_kembali"` 
+	IsActive      bool        `gorm:"default:true" json:"is_active"` 
+}
+
+func (SewaMitra) TableName() string { return "sewa_mitra" }
+
+// 3. Pencatatan Izin (Libur Jualan = Bebas Sewa)
+type IzinMitra struct {
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	PenjualID    uint      `json:"penjual_id"`
+	// 👇 UBAH json:"-" MENJADI json:"penjual" 👇
+	Penjual      Penjual   `gorm:"foreignKey:PenjualID" json:"penjual"`
+	TanggalMulai time.Time `gorm:"type:date;not null" json:"tanggal_mulai"`
+	TanggalAkhir time.Time `gorm:"type:date;not null" json:"tanggal_akhir"`
+	Keterangan   string    `json:"keterangan"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+func (IzinMitra) TableName() string { return "izin_mitra" }
+
+// 4. Tagihan Invoice Bulanan/Mingguan
+type InvoiceSewa struct {
+	ID             uint      `gorm:"primaryKey" json:"id"`
+	PenjualID      uint      `json:"penjual_id"`
+	// 👇 UBAH json:"-" MENJADI json:"penjual" 👇
+	Penjual        Penjual   `gorm:"foreignKey:PenjualID" json:"penjual"`
+	NoInvoice      string    `gorm:"unique;not null" json:"no_invoice"` 
+	Bulan          int       `json:"bulan"`
+	Tahun          int       `json:"tahun"`
+	TotalSewa      float64   `json:"total_sewa"` 
+	TotalDiskonIzin float64  `json:"total_diskon_izin"` 
+	GrandTotal     float64   `json:"grand_total"` 
+	StatusLunas    bool      `gorm:"default:false" json:"status_lunas"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+func (InvoiceSewa) TableName() string { return "invoice_sewa" }

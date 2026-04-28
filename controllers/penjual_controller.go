@@ -63,6 +63,79 @@ func AddRFIDToPenjual(c *fiber.Ctx) error {
 	return c.Status(201).JSON(card)
 }
 
+func DeleteRFIDFromPenjual(c *fiber.Ctx) error {
+	// Bisa hapus berdasarkan ID kartu RFID atau berdasarkan RFID tag
+	id := c.Params("id") // ID dari tabel PenjualRFID
+	rfidTag := c.Query("rfid_tag") // Alternatif: hapus berdasarkan tag RFID
+
+	var card models.PenjualRFID
+
+	// Jika ada parameter rfid_tag, cari berdasarkan tag
+	if rfidTag != "" {
+		if err := config.DB.Where("rfid_tag = ?", rfidTag).First(&card).Error; err != nil {
+			return c.Status(404).JSON(fiber.Map{
+				"error": "Kartu RFID tidak ditemukan",
+				"detail": fmt.Sprintf("Tidak ada kartu dengan tag: %s", rfidTag),
+			})
+		}
+	} else if id != "" {
+		// Jika tidak ada rfid_tag, cari berdasarkan ID
+		if err := config.DB.First(&card, id).Error; err != nil {
+			return c.Status(404).JSON(fiber.Map{
+				"error": "Kartu RFID tidak ditemukan",
+				"detail": fmt.Sprintf("Tidak ada kartu dengan ID: %s", id),
+			})
+		}
+	} else {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Parameter tidak valid",
+			"detail": "Gunakan ID kartu di URL atau query parameter ?rfid_tag=xxx",
+		})
+	}
+
+	// Ambil data penjual sebelum dihapus untuk response
+	var penjual models.Penjual
+	config.DB.First(&penjual, card.PenjualID)
+
+	// Hapus kartu RFID
+	if err := config.DB.Delete(&card).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Gagal menghapus kartu RFID",
+			"detail": err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "Kartu RFID berhasil dihapus",
+		"deleted_card": fiber.Map{
+			"id":        card.ID,
+			"rfid_tag":  card.RFIDTag,
+			"penjual_id": card.PenjualID,
+			"nama_penjual": penjual.NamaPenjual,
+		},
+	})
+}
+
+// GetRFIDByPenjual untuk melihat semua kartu RFID milik mitra tertentu
+func GetRFIDByPenjual(c *fiber.Ctx) error {
+	penjualID := c.Params("penjual_id")
+	
+	// Cek apakah mitra ada
+	var penjual models.Penjual
+	if err := config.DB.First(&penjual, penjualID).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Mitra tidak ditemukan"})
+	}
+
+	// Ambil semua kartu RFID milik mitra
+	var cards []models.PenjualRFID
+	config.DB.Where("penjual_id = ?", penjualID).Find(&cards)
+
+	return c.JSON(fiber.Map{
+		"penjual": penjual,
+		"cards":   cards,
+		"total":   len(cards),
+	})
+}
 
 // ==========================================
 // AREA KASIR: VERIFIKASI TRANSAKSI

@@ -85,13 +85,47 @@ func setupRoutes(app *fiber.App) {
 	
 	// [FITUR BARU] Endpoint Pairing Kartu RFID ke Mitra
 	admin.Post("/penjual/rfid", controllers.AddRFIDToPenjual)
-
+	
+	// [FITUR BARU] Endpoint Lihat Semua RFID Milik Mitra
+	admin.Get("/penjual/:penjual_id/rfid", controllers.GetRFIDByPenjual)
+	
+	// [FITUR BARU] Endpoint Delete RFID (Berdasarkan ID Kartu)
+	admin.Delete("/penjual/rfid/:id", controllers.DeleteRFIDFromPenjual)
+	
+	// [FITUR BARU] Endpoint Delete RFID (Berdasarkan RFID Tag via Query)
+	// Contoh: DELETE /api/admin/penjual/rfid?rfid_tag=AB:CD:EF:12:34:56
+	admin.Delete("/penjual/rfid", controllers.DeleteRFIDFromPenjual)
 	// Reports & Analytics
 	admin.Get("/daily-rekap", controllers.GetDailyRekap)
 	admin.Get("/ranking", controllers.GetTopPenjual)
 	admin.Get("/low-activity", controllers.GetInactivePenjual)
 	admin.Get("/export", controllers.ExportTransaksiCSV)
 	admin.Get("/history-rekap", controllers.GetHistoryRekap)
+
+	// ==========================================
+	// [MODUL BARU] ERP SEWA & ASET
+	// ==========================================
+	sewaRoutes := admin.Group("/sewa")
+	
+	// Master Katalog Barang Sewa
+	sewaRoutes.Get("/katalog", controllers.GetKatalogSewa)
+	sewaRoutes.Post("/katalog", controllers.AddKatalogSewa)
+	sewaRoutes.Put("/katalog/:id", controllers.EditKatalogSewa)
+	sewaRoutes.Delete("/katalog/:id", controllers.DeleteKatalogSewa)
+
+	// Assign Peminjaman & Pengembalian Aset
+	sewaRoutes.Post("/assign", controllers.RentAssetToMitra)
+	sewaRoutes.Put("/return/:id", controllers.ReturnAssetToAdmin)
+	sewaRoutes.Get("/assign", controllers.GetListSewa)
+
+	// Manajemen Izin (Pause Tagihan)
+	sewaRoutes.Get("/izin", controllers.GetIzinMitra)
+	sewaRoutes.Post("/izin", controllers.AddIzinMitra)
+	sewaRoutes.Put("/izin/:id", controllers.EditIzinMitra)
+	sewaRoutes.Delete("/izin/:id", controllers.DeleteIzinMitra)
+
+	sewaRoutes.Get("/invoice-preview", controllers.GetInvoicePreview)
+
 }
 
 func seedAdmin() {
