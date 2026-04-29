@@ -205,7 +205,7 @@ func GetInvoicePreview(c *fiber.Ctx) error {
 	endOfMonth := startOfMonth.AddDate(0, 1, -1) // Tanggal terakhir di bulan tersebut
 
 	var penjualList []models.Penjual
-	config.DB.Find(&penjualList)
+	config.DB.Where("is_active = ?", true).Find(&penjualList)
 
 	type InvoiceResponse struct {
 		PenjualID       uint    `json:"penjual_id"`
