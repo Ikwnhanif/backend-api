@@ -71,6 +71,7 @@ func setupRoutes(app *fiber.App) {
 	
 	// [FITUR BARU] Endpoint Verifikasi Mitra via RFID atau PIN
 	kasir.Post("/verify-mitra", controllers.VerifyMitra)
+	kasir.Get("/penjual-aktif", controllers.GetListPenjualAktif)
 
 	// ==========================================
 	// --- JALUR ADMIN ---

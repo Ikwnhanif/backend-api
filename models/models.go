@@ -30,21 +30,24 @@ type Penjual struct {
 }
 
 type PenjualRFID struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	PenjualID uint      `json:"penjual_id"`
-	Penjual   Penjual   `gorm:"foreignKey:PenjualID" json:"-"` 
-	
-	RFIDTag   string    `gorm:"unique;not null" json:"rfid_tag"`
-	Label     string    `json:"label"`
-	CreatedAt time.Time `json:"created_at"`
+    ID        uint      `gorm:"primaryKey" json:"id"`
+    PenjualID uint      `json:"penjual_id"`
+    Penjual   Penjual   `gorm:"foreignKey:PenjualID" json:"-"` 
+    
+    // Paksa GORM menggunakan 'rfid_tag'
+    RFIDTag   string    `gorm:"column:rfid_tag;unique;not null" json:"rfid_tag"`
+    
+    Label     string    `json:"label"`
+    CreatedAt time.Time `json:"created_at"`
 }
 
 type Presensi struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	PenjualID uint      `json:"penjual_id"`
-	Penjual   Penjual   `gorm:"foreignKey:PenjualID"`
-	Tanggal   time.Time `gorm:"type:date;not null" json:"tanggal"`
-	JamMasuk  time.Time `gorm:"type:time;not null" json:"jam_masuk"`
+    ID        uint      `gorm:"primaryKey" json:"id"`
+    PenjualID uint      `json:"penjual_id"`
+    // Tambahkan json:"penjual" agar bisa tampil di frontend saat dipanggil
+    Penjual   Penjual   `gorm:"foreignKey:PenjualID" json:"penjual"`
+    Tanggal   time.Time `gorm:"type:date;not null" json:"tanggal"`
+    JamMasuk  time.Time `gorm:"type:time;not null" json:"jam_masuk"`
 }
 
 type TransaksiMie struct {

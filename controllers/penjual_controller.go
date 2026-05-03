@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	"mie-supplier-api/config" // Sesuaikan dengan path folder config database Anda
@@ -143,8 +144,8 @@ func GetRFIDByPenjual(c *fiber.Ctx) error {
 
 func VerifyMitra(c *fiber.Ctx) error {
 	type AuthRequest struct {
-		Type  string `json:"type"`  // isinya harus "rfid" atau "pin"
-		Value string `json:"value"` // isinya kode tag RFID atau angka PIN
+		Type  string `json:"type"`  // rfid, pin, atau search
+		Value string `json:"value"` // kode rfid, angka pin, atau potongan nama/alamat
 	}
 
 	req := new(AuthRequest)
@@ -152,38 +153,41 @@ func VerifyMitra(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Format request salah"})
 	}
 
+	cleanValue := strings.TrimSpace(req.Value)
 	var penjual models.Penjual
 
-	// CABANG LOGIKA DUAL-AUTH
-	if req.Type == "rfid" {
-		
-		// 1. Kasir pakai Kartu (Tapping)
+	switch req.Type {
+	case "rfid":
 		var rfidEntry models.PenjualRFID
-		// Cari kartu, dan langsung tarik data profil penjualnya (Preload)
-		err := config.DB.Preload("Penjual").Where("rfid_tag = ?", req.Value).First(&rfidEntry).Error
+		err := config.DB.Preload("Penjual").Where("rfid_tag = ?", cleanValue).First(&rfidEntry).Error
 		if err != nil {
 			return c.Status(404).JSON(fiber.Map{"error": "Kartu RFID tidak terdaftar"})
 		}
 		penjual = rfidEntry.Penjual
 
-	} else if req.Type == "pin" {
-		
-		// 2. Kasir pakai PIN Manual (Fallback jika kartu tertinggal)
-		err := config.DB.Where("pin = ?", req.Value).First(&penjual).Error
+	case "pin":
+		err := config.DB.Where("pin = ?", cleanValue).First(&penjual).Error
 		if err != nil {
 			return c.Status(404).JSON(fiber.Map{"error": "PIN salah atau tidak ditemukan"})
 		}
 
-	} else {
+	case "search":
+		// Mencari mitra berdasarkan Nama ATAU Alamat
+		// Menggunakan ILIKE (Postgres) atau LIKE (MySQL) untuk pencarian parsial
+		query := "%" + cleanValue + "%"
+		err := config.DB.Where("(nama_penjual LIKE ? OR alamat_jualan LIKE ?) AND is_active = ?", query, query, true).First(&penjual).Error
+		if err != nil {
+			return c.Status(404).JSON(fiber.Map{"error": "Mitra dengan nama/alamat tersebut tidak ditemukan"})
+		}
+
+	default:
 		return c.Status(400).JSON(fiber.Map{"error": "Tipe verifikasi tidak valid"})
 	}
 
-	// Validasi Terakhir: Pastikan mitra tidak sedang di-banned / nonaktif
 	if !penjual.IsActive {
-		return c.Status(403).JSON(fiber.Map{"error": "Mitra ini sedang dinonaktifkan. Hubungi Admin."})
+		return c.Status(403).JSON(fiber.Map{"error": "Mitra ini sedang dinonaktifkan"})
 	}
 
-	// Sukses! Kembalikan data penjual ke layar kasir untuk lanjut transaksi
 	return c.JSON(fiber.Map{
 		"message": "Verifikasi Sukses",
 		"data":    penjual,
@@ -209,4 +213,19 @@ func UpdatePenjual(c *fiber.Ctx) error {
 	config.DB.Save(&penjual)
 
 	return c.JSON(penjual)
+}
+
+// Tambahkan fungsi baru ini
+func GetListPenjualAktif(c *fiber.Ctx) error {
+	var penjuals []models.Penjual
+	
+	// Kasir HANYA butuh melihat penjual yang aktif dan tidak butuh data detail (seperti omset)
+	// Kita ambil field yang penting saja (opsional) atau ambil semua yang aktif
+	err := config.DB.Where("is_active = ?", true).Find(&penjuals).Error
+	
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Gagal mengambil data mitra"})
+	}
+	
+	return c.JSON(penjuals)
 }
