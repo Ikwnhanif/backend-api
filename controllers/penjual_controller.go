@@ -229,3 +229,25 @@ func GetListPenjualAktif(c *fiber.Ctx) error {
 	
 	return c.JSON(penjuals)
 }
+
+// GetRiwayatKasir - Mengambil data transaksi hari ini (Terbaru di atas)
+func GetRiwayatKasir(c *fiber.Ctx) error {
+	var riwayat []models.TransaksiMie
+
+	// Ambil tanggal hari ini (format YYYY-MM-DD)
+	today := time.Now().Format("2006-01-02")
+
+	// Preload "Penjual" agar kita dapat nama mitranya
+	// Filter berdasarkan hari ini, urutkan dari jam terbaru (desc)
+	err := config.DB.Preload("Penjual").
+		Where("DATE(tanggal_transaksi) = ?", today).
+		Order("tanggal_transaksi desc").
+		Limit(50).
+		Find(&riwayat).Error
+
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Gagal mengambil riwayat transaksi"})
+	}
+
+	return c.JSON(riwayat)
+}
